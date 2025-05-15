@@ -1,0 +1,4 @@
+build/
+.DS_Store
+*.nds
+settings.json

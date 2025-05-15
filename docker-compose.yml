@@ -1,0 +1,10 @@
+version: '3'
+services:
+  blocksds:
+    image: skylyrac/blocksds:slim-latest
+    volumes:
+      - /Users/nahelbelmadani/Desktop/projets/NDS/plateformer:/work
+    entrypoint: /bin/bash -c "wf-pacman -Sy blocksds-nflib && /bin/bash"
+    stdin_open: true
+    tty: true
+
