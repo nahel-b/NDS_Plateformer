@@ -17,8 +17,9 @@
 #define GRAVITE 0.2
 #define SAUT_VELOCITE -5
 
-#define COTE_VELOCITE 4.0 
-#define FROTTEMENT_COTE 0.5
+#define COTE_VELOCITE 0.3 
+#define MAX_COTE_VELOCITE 4.0
+#define FROTTEMENT_COTE 0.1
 
 #define VITESSE_MAX 3
 
@@ -30,7 +31,11 @@
 #define PLAYER_SPRITE_HEIGHT 64
 
 
+#define MIN_X_PLATEFORME 10
+#define MAX_X_PLATEFORME 180
 
+#define MIN_VX_PLATEFORME 2
+#define MAX_VX_PLATEFORME 3
 
 
 typedef struct {
@@ -42,6 +47,9 @@ typedef struct {
 typedef struct {
     float x, y;
     bool visible;
+
+    bool mouvante;
+    float vx;
 } Platforme;
 
 typedef struct {
@@ -51,11 +59,11 @@ typedef struct {
 
 
 Platforme platformes[NB_PLATEFORMES] = {
-    {50, 100,true},
-    {140, 160,true},
-    {100, 200,true},
-    {150, 200,true},
-    {200, 200,true}
+    {50, 100,true,false,0},
+    {140, 160,true,false,0},
+    {100, 200,true,false,0},
+    {150, 200,true,false,0},
+    {200, 200,true,false,0}
 };
 
 void initPlatformes()
@@ -92,9 +100,18 @@ void newPosPlateforme(int i)
         if(platformes[i].y < min_y){min_y =platformes[i].y;}
 
     }
+    // new pos
     platformes[i].y = min_y - (rand()%10) - 50; // 50 - 60
-    platformes[i].x = (rand()%170) + 10; // 10 - 180
+    platformes[i].x = (((rand()%170)*7)%(MAX_X_PLATEFORME-MIN_X_PLATEFORME)) + MIN_X_PLATEFORME;
     platformes[i].visible = false;
+
+    // mouvante ?
+    if(rand()%8 == 0)
+    {
+        platformes[i].mouvante = true;
+        platformes[i].vx = rand()%(MAX_VX_PLATEFORME-MIN_VX_PLATEFORME) + MIN_VX_PLATEFORME;
+    }
+
     NF_ShowSprite(0, i+1,false);
 }
 
@@ -110,6 +127,15 @@ void updatePlatformes(Camera *camera, Joueur *player)
             //     player.y = platformes[i].y - 64; // Adjust player's position to be on top of the platform
             // }
 
+            if(platformes[i].mouvante)
+            {
+                platformes[i].x += platformes[i].vx;
+                if(platformes[i].x<MIN_X_PLATEFORME || platformes[i].x>MAX_X_PLATEFORME )
+                {
+                    platformes[i].vx *=-1;
+                }
+            }
+
             if(platformes[i].y > camera->y + 200)
             {
                 NF_ShowSprite(0, i+1,false);
@@ -119,9 +145,9 @@ void updatePlatformes(Camera *camera, Joueur *player)
             }
             else{
 
-            
-            NF_MoveSprite(0, i+1, (int)platformes[i].x, (int)platformes[i].y - camera->y);
-            NF_ShowSprite(0, i+1,true);}
+                NF_MoveSprite(0, i+1, (int)platformes[i].x, (int)platformes[i].y - camera->y);
+                NF_ShowSprite(0, i+1,true);
+            }
         }
         else if(platformes[i].y > camera->y - 20 && platformes[i].y < camera->y + 200)
         {
@@ -157,13 +183,13 @@ void manageInput(Joueur *player)
 
     if (keys & KEY_LEFT) {
 
-       player->vx = -COTE_VELOCITE;
+       player->vx = player->vx-COTE_VELOCITE < - MAX_COTE_VELOCITE ? - MAX_COTE_VELOCITE : player->vx-COTE_VELOCITE ;
         NF_HflipSprite(0, 0, true);
 
     } else if (keys & KEY_RIGHT) {
 
 
-        player->vx = COTE_VELOCITE;
+        player->vx = player->vx + COTE_VELOCITE >  MAX_COTE_VELOCITE ? MAX_COTE_VELOCITE : player->vx +COTE_VELOCITE ;
         NF_HflipSprite(0, 0, false);
 
     } 
@@ -319,7 +345,7 @@ int main(int argc, char **argv)
         swiWaitForVBlank();
 
         consoleClear();
-        printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n", player.x, player.y, player.vx, player.vy,camera.y,lose);
+        printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n%d", player.x, player.y, player.vx, player.vy,camera.y,lose,rand()%200);
 
         // Update OAM
         oamUpdate(&oamMain);
