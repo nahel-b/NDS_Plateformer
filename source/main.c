@@ -53,9 +53,9 @@ typedef struct {
 Platforme platformes[NB_PLATEFORMES] = {
     {50, 100,true},
     {140, 160,true},
-    {100, 160,false},
-    {150, 200,false},
-    {200, 240,false}
+    {100, 200,true},
+    {150, 200,true},
+    {200, 200,true}
 };
 
 void initPlatformes()
@@ -85,6 +85,19 @@ void updateCamera(Camera *camera, Joueur *player)
     } 
 }
 
+void newPosPlateforme(int i)
+{
+    float min_y = 300; // plus grand impossible
+    for (int i = 0; i < NB_PLATEFORMES; i++) {
+        if(platformes[i].y < min_y){min_y =platformes[i].y;}
+
+    }
+    platformes[i].y = min_y - (rand()%10) - 50; // 50 - 60
+    platformes[i].x = (rand()%170) + 10; // 10 - 180
+    platformes[i].visible = false;
+    NF_ShowSprite(0, i+1,false);
+}
+
 
 void updatePlatformes(Camera *camera, Joueur *player)
 {
@@ -99,11 +112,22 @@ void updatePlatformes(Camera *camera, Joueur *player)
 
             if(platformes[i].y > camera->y + 200)
             {
+                NF_ShowSprite(0, i+1,false);
                 platformes[i].visible = false;
-            }
+                newPosPlateforme(i);
 
-            NF_ShowSprite(0, i+1,true);
+            }
+            else{
+
+            
             NF_MoveSprite(0, i+1, (int)platformes[i].x, (int)platformes[i].y - camera->y);
+            NF_ShowSprite(0, i+1,true);}
+        }
+        else if(platformes[i].y > camera->y - 20 && platformes[i].y < camera->y + 200)
+        {
+            NF_MoveSprite(0, i+1, (int)platformes[i].x, (int)platformes[i].y - camera->y);
+            platformes[i].visible = true;
+            NF_ShowSprite(0, i+1,true);
         }
         else
         {
