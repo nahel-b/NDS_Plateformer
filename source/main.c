@@ -37,6 +37,8 @@
 #define MIN_VX_PLATEFORME 2
 #define MAX_VX_PLATEFORME 3
 
+#define TRAMPOLINE_VELOCITE -15
+
 
 typedef struct {
     float x, y;
@@ -50,20 +52,22 @@ typedef struct {
 
     bool mouvante;
     float vx;
+
+    bool trampoline;
 } Platforme;
 
 typedef struct {
     float  y;
 } Camera;
 
-
+int nb_p = 0;
 
 Platforme platformes[NB_PLATEFORMES] = {
-    {50, 100,true,false,0},
-    {140, 160,true,false,0},
-    {100, 200,true,false,0},
-    {150, 200,true,false,0},
-    {200, 200,true,false,0}
+    {50, 100,true,false,0,false},
+    {140, 160,true,false,0,false},
+    {100, 200,true,false,0,false},
+    {150, 200,true,false,0,false},
+    {200, 200,true,false,0,false}
 };
 
 void initPlatformes()
@@ -84,13 +88,19 @@ void initPlatformes()
 }
 
 
-void updateCamera(Camera *camera, Joueur *player)
+void updateCamera(Camera *camera, Joueur *player,bool loose)
 {
     float milieu = 35;
 
     if(player->y < milieu &&  camera->y > player->y - milieu) {
         camera->y = player->y - milieu;
     } 
+
+    if(loose)
+    {
+        camera->y = player->y - milieu;
+    }
+    
 }
 
 void newPosPlateforme(int i)
@@ -105,11 +115,31 @@ void newPosPlateforme(int i)
     platformes[i].x = (((rand()%170)*7)%(MAX_X_PLATEFORME-MIN_X_PLATEFORME)) + MIN_X_PLATEFORME;
     platformes[i].visible = false;
 
+    if(rand()%5 == 0)
+    {
+        platformes[i].x = rand()%2==0 ? MIN_X_PLATEFORME : MAX_X_PLATEFORME;
+        nb_p++;
+    }
+
     // mouvante ?
-    if(rand()%8 == 0)
+    if(rand()%3 == 0)
     {
         platformes[i].mouvante = true;
         platformes[i].vx = rand()%(MAX_VX_PLATEFORME-MIN_VX_PLATEFORME) + MIN_VX_PLATEFORME;
+
+    }
+    else
+    {
+       platformes[i].mouvante = false; 
+    }
+
+    if(rand()%8 == 0)
+    {
+        platformes[i].trampoline = true;
+    }
+    else
+    {
+        platformes[i].trampoline = false;
     }
 
     NF_ShowSprite(0, i+1,false);
@@ -143,6 +173,11 @@ void updatePlatformes(Camera *camera, Joueur *player)
                 newPosPlateforme(i);
 
             }
+            else if(platformes[i].y < camera->y - 20)
+            {
+               NF_ShowSprite(0, i+1,false);
+                platformes[i].visible = false; 
+            }
             else{
 
                 NF_MoveSprite(0, i+1, (int)platformes[i].x, (int)platformes[i].y - camera->y);
@@ -167,8 +202,8 @@ void updatePlatformes(Camera *camera, Joueur *player)
 
 
 
-void sauter(Joueur *player) {
-    player->vy = SAUT_VELOCITE;
+void sauter(Joueur *player,float velocite) {
+    player->vy = velocite ;
 }
 
 void manageInput(Joueur *player)
@@ -177,7 +212,7 @@ void manageInput(Joueur *player)
     uint16_t keys = keysHeld();
 
     if (keys & KEY_UP) {
-        sauter(player);
+        sauter(player,SAUT_VELOCITE);
     }
 
 
@@ -229,8 +264,15 @@ void updatePlayer( Joueur *player)
             player->y > platformes[i].y - PLAYER_SPRITE_HEIGHT && player->y < platformes[i].y - PLAYER_SPRITE_HEIGHT + 10
         ) {
             // Collision detected
+            if(platformes[i].trampoline)
+            {
+                sauter(player,TRAMPOLINE_VELOCITE);   
+            }
+            else
+            {
+                sauter(player,SAUT_VELOCITE);
+            }
             
-            sauter(player);
         }
     }
 
@@ -321,12 +363,12 @@ int main(int argc, char **argv)
 
   //  NF_SpriteRotScale(0,0,0,256*SCALE_PERSO,256*SCALE_PERSO);
     
-    bool lose = false;
+    bool loose = false;
     while (1)
     {
         
 
-        updateCamera(&camera, &player);
+        updateCamera(&camera, &player,loose);
 
 
         manageInput(&player);
@@ -335,7 +377,7 @@ int main(int argc, char **argv)
         NF_MoveSprite(0, 0, (int)player.x, (int)player.y - camera.y);
         updatePlatformes(&camera,&player);
 
-        if(player.y > camera.y+120){lose = true;}
+        if(player.y > camera.y+140){loose = true;}
 
 
         NF_SpriteOamSet(0);
@@ -345,7 +387,7 @@ int main(int argc, char **argv)
         swiWaitForVBlank();
 
         consoleClear();
-        printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n%d", player.x, player.y, player.vx, player.vy,camera.y,lose,rand()%200);
+        printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n%d", player.x, player.y, player.vx, player.vy,camera.y,loose,nb_p);
 
         // Update OAM
         oamUpdate(&oamMain);
