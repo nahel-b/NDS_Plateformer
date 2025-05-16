@@ -24,6 +24,13 @@
 
 #define SCALE_PERSO 1
 
+#define NB_PLATEFORMES 5
+
+#define PLAYER_SPRITE_WIDTH 64
+#define PLAYER_SPRITE_HEIGHT 64
+
+
+
 
 
 typedef struct {
@@ -37,6 +44,75 @@ typedef struct {
     bool visible;
 } Platforme;
 
+typedef struct {
+    float  y;
+} Camera;
+
+
+
+Platforme platformes[NB_PLATEFORMES] = {
+    {50, 100,true},
+    {140, 160,true},
+    {100, 160,false},
+    {150, 200,false},
+    {200, 240,false}
+};
+
+void initPlatformes()
+{
+    NF_LoadSpriteGfx("sprite/plateforme", 1, 64, 32);  // Changed to index 1 to match later usage
+    NF_LoadSpritePal("sprite/plateforme", 1);  
+    NF_VramSpriteGfx(0, 1, 1, false); // Use sprite index 1 on screen 0
+    NF_VramSpritePal(0, 1, 1);
+    for (int i = 0; i < NB_PLATEFORMES; i++) {
+                 // Changed to index 1 to match later usage
+
+ 
+         
+
+       NF_CreateSprite(0, i+1, 1, 1, platformes[i].x, platformes[i].y);
+        
+    }  
+}
+
+
+void updateCamera(Camera *camera, Joueur *player)
+{
+    float milieu = 35;
+
+    if(player->y < milieu &&  camera->y > player->y - milieu) {
+        camera->y = player->y - milieu;
+    } 
+}
+
+
+void updatePlatformes(Camera *camera, Joueur *player)
+{
+    for (int i = 0; i < NB_PLATEFORMES; i++) {
+        if(platformes[i].visible) {
+            // if (player.x > platformes[i].x && player.x < platformes[i].x + 64 &&
+            //     player.y > platformes[i].y && player.y < platformes[i].y + 64) {
+            //     // Collision detected
+            //     player.vy = 0;
+            //     player.y = platformes[i].y - 64; // Adjust player's position to be on top of the platform
+            // }
+
+            if(platformes[i].y > camera->y + 200)
+            {
+                platformes[i].visible = false;
+            }
+
+            NF_ShowSprite(0, i+1,true);
+            NF_MoveSprite(0, i+1, (int)platformes[i].x, (int)platformes[i].y - camera->y);
+        }
+        else
+        {
+            NF_ShowSprite(0, i+1,false);
+
+        }
+       
+    }
+}
 
 
 
@@ -70,7 +146,7 @@ void manageInput(Joueur *player)
 }
 
 
-void updatePlayer(Joueur *player)
+void updatePlayer( Joueur *player)
 {
     player->x += player->vx;
     player->y += player->vy;
@@ -94,11 +170,26 @@ void updatePlayer(Joueur *player)
     // if (player->y < 0 || player->y > 159) {
     //     player->vy *= -1;
     // }
-    if(player->y > 159-50)
+
+    for( int i = 0; i < NB_PLATEFORMES; i++)
     {
-        //player->y = 80;
-        sauter(player);
+
+        if(player->vy >= 0 && platformes[i].visible &&  
+            player->x > platformes[i].x - 64/2 - (PLAYER_SPRITE_WIDTH/4)  && player->x < platformes[i].x + 64/2 + (PLAYER_SPRITE_WIDTH/4) &&
+            player->y > platformes[i].y - PLAYER_SPRITE_HEIGHT && player->y < platformes[i].y - PLAYER_SPRITE_HEIGHT + 10
+        ) {
+            // Collision detected
+            
+            sauter(player);
+        }
     }
+
+
+    // if(player->y > 159-PLAYER_SPRITE_HEIGHT/2)
+    // {
+    //     //player->y = 80;
+    //     sauter(player);
+    // }
 }
 
 void init()
@@ -141,13 +232,19 @@ void init()
 
 
     // Load sprite files from NitroFS
-    NF_LoadSpriteGfx("sprite/nahel", 0, 64, 64);  // Changed to index 1 to match later usage
+    NF_LoadSpriteGfx("sprite/nahel", 0, PLAYER_SPRITE_WIDTH, PLAYER_SPRITE_HEIGHT);  // Changed to index 1 to match later usage
     NF_LoadSpritePal("sprite/nahel", 0);           // Changed to index 1 to match later usage
 
 
     NF_VramSpriteGfx(0, 0, 0, true); // Use sprite index 1 on screen 0
     NF_VramSpritePal(0, 0, 0);
+
+
+    initPlatformes();
+
 }
+
+
 
 int main(int argc, char **argv)
 {
@@ -158,10 +255,14 @@ int main(int argc, char **argv)
 
     // Initialize player structure
     Joueur player;
-    player.x = -60;
-    player.y = 20;
+    player.x = 152;
+    player.y = 80;
     player.vx = 0;
     player.vy = SAUT_VELOCITE;
+
+    // Initialize Camera structure
+    Camera camera;
+    camera.y = -20;
 
 
     NF_CreateSprite(0, 0, 0, 0, player.x, player.y); // Create on screen 0, ID 0, using graphics 1, palette 1
@@ -170,15 +271,22 @@ int main(int argc, char **argv)
 
   //  NF_SpriteRotScale(0,0,0,256*SCALE_PERSO,256*SCALE_PERSO);
     
-    
+    bool lose = false;
     while (1)
     {
         
 
+        updateCamera(&camera, &player);
+
+
         manageInput(&player);
 
         updatePlayer(&player);
-        NF_MoveSprite(0, 0, (int)player.x, (int)player.y);
+        NF_MoveSprite(0, 0, (int)player.x, (int)player.y - camera.y);
+        updatePlatformes(&camera,&player);
+
+        if(player.y > camera.y+120){lose = true;}
+
 
         NF_SpriteOamSet(0);
         NF_SpriteOamSet(1);
@@ -187,7 +295,7 @@ int main(int argc, char **argv)
         swiWaitForVBlank();
 
         consoleClear();
-        printf("x: %f, y: %f, vx: %f, vy: %f\n", player.x, player.y, player.vx, player.vy);
+        printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n", player.x, player.y, player.vx, player.vy,camera.y,lose);
 
         // Update OAM
         oamUpdate(&oamMain);
