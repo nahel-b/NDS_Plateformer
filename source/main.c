@@ -11,6 +11,7 @@
 
 #include <nf_lib.h>
 #include <stdio.h>
+#include <fat.h>
 
 
 #define TAILLE_SCORE 5
@@ -41,6 +42,11 @@
 #define TRAMPOLINE_VELOCITE -15
 
 
+// 0 : charactere
+// 1 - 5 : plateforme
+// 6 - 10 : score Texte
+// 16-20 : score best
+
 typedef struct {
     float x, y;
     float vx;
@@ -60,6 +66,15 @@ typedef struct {
 typedef struct {
     float  y;
 } Camera;
+
+
+struct VariablesToSave
+{
+	int HiScore;
+} SaveFile;
+
+//File system
+FILE *savefile;
 
 int nb_p = 0;
 
@@ -84,7 +99,7 @@ void initPlatformes()
          
 
        NF_CreateSprite(0, i+1, 1, 1, platformes[i].x, platformes[i].y);
-        
+        NF_SpriteLayer(0,i+1,3);
     }  
 }
 
@@ -106,8 +121,33 @@ void initScoreText()
         NF_CreateSprite(0, i+1, 2, 2, (i-NB_PLATEFORMES )*espacement, 0);
         NF_SpriteFrame(0, i+1, 0);
         NF_ShowSprite(0, i+1,i == NB_PLATEFORMES ? true : false);
+        NF_SpriteLayer(0,i+1,1);
+       // NF_EnableSpriteRotScale(0,i+1,0,true);
     }
+
+   // NF_SpriteRotScale(0,0,0,350,400);
 }
+
+void hideScoreText()
+{
+    
+   for(int i = NB_PLATEFORMES; i < NB_PLATEFORMES+TAILLE_SCORE; i++)
+    {
+        NF_ShowSprite(0,i+1,false);
+    } 
+}
+
+void placeScoreTextMilieu()
+{
+    int espacement =  13;
+    for(int i = NB_PLATEFORMES; i < NB_PLATEFORMES+TAILLE_SCORE; i++)
+    {
+
+        NF_MoveSprite(0, i+1, 130 + (i-NB_PLATEFORMES )*espacement, 34);
+        //NF_ShowSprite(0,i+1,true);
+    } 
+}
+
 
 void updateScoreText(int score)
 {
@@ -140,13 +180,13 @@ void updateScoreText(int score)
 }
 
 
-void updateCamera(Camera *camera, Joueur *player,bool loose)
+void updateCamera(Camera *camera, Joueur *player,bool loose,int * score)
 {
     float milieu = 35;
 
     if(player->y < milieu &&  camera->y > player->y - milieu) {
         camera->y = player->y - milieu;
-        updateScoreText((int)((-camera->y)/10));
+        *score = -camera->y/10;
     } 
 
     if(loose)
@@ -370,7 +410,10 @@ void init()
     // Initialize 2D engine in both screens and use mode 0
     NF_Set2D(0, 0); 
    // NF_Set2D(1, 0);
-
+   
+    // Initialize FAT filesystem for save files
+    fatInitDefault();
+    
     // Initialize tiled backgrounds system
     NF_InitTiledBgBuffers();    // Initialize storage buffers
     NF_InitTiledBgSys(0);       // Top screen
@@ -385,8 +428,13 @@ void init()
     // Load background files from NitroFS
     NF_LoadTiledBg("bg/bg3", "layer_3", 256, 256);
 
+    NF_LoadTiledBg("bg/bgScore","bgScore",256, 256);
+
     // Create top screen background 
     NF_CreateTiledBg(0, 3, "layer_3");
+    NF_CreateTiledBg(0, 2, "bgScore");
+
+    NF_ScrollBg(0,2,0,120); // debut : 120 - fin : 30
 
     // Create bottom screen backgrounds
     // NF_CreateTiledBg(1, 3, "layer_3");
@@ -429,6 +477,24 @@ int main(int argc, char **argv)
     camera.y = -20;
 
 
+    int HighScore = 0;
+    
+    savefile = fopen("fat:/Plateformer.sav", "rb");
+    if (savefile != NULL) {
+        fread(&SaveFile, 1, sizeof(SaveFile), savefile);
+        fclose(savefile);
+        HighScore = SaveFile.HiScore;
+        consoleClear();
+        printf("Loaded high score: %d\n", HighScore);
+        swiWaitForVBlank();
+    } else {
+        SaveFile.HiScore = 0;
+        consoleClear();
+        printf("No save file found, creating new one\n");
+        swiWaitForVBlank();
+    }
+
+
     NF_CreateSprite(0, 0, 0, 0, player.x, player.y); // Create on screen 0, ID 0, using graphics 1, palette 1
 
    // NF_EnableSpriteRotScale(0,0,0,true);
@@ -443,17 +509,52 @@ int main(int argc, char **argv)
         
         
         bool loose = false;
+        int frameFinAnime = -1;
+        int score = 0;
         // PARTIE DE JEU
         while(1)
         {
-            updateCamera(&camera, &player,loose);
+            updateCamera(&camera, &player,loose,&score);
+
+            updateScoreText(score);
             manageInput(&player);
 
             updatePlayer(&player);
             NF_MoveSprite(0, 0, (int)player.x, (int)player.y - camera.y);
             updatePlatformes(&camera,&player);
 
-            if(player.y > camera.y+140){loose = true; NF_SpriteFrame(0, 0, 1);}
+            if(player.y > camera.y+140){loose = true;  NF_SpriteFrame(0, 0, 1);
+                
+                placeScoreTextMilieu();
+
+                if (score > HighScore)
+                {
+                    HighScore = score;
+                    SaveFile.HiScore = HighScore;
+                    savefile = fopen("fat:/Plateformer.sav", "wb");
+                    if (savefile != NULL) {
+                        fwrite(&SaveFile, 1, sizeof(SaveFile), savefile);
+                        fclose(savefile);
+                        consoleClear();
+                        printf("New high score saved: %d\n", HighScore);
+                    } else {
+                        consoleClear();
+                        printf("Failed to save high score!\n");
+                    }
+                }
+               // hideScoreText();
+            
+            }
+            if(loose && frameFinAnime == -1){frameFinAnime = 0;}
+
+            if(loose){frameFinAnime++;}
+
+            if(frameFinAnime >= 0)
+            {
+                //120 - 30
+                int frame = frameFinAnime > 90 ? 90 : frameFinAnime;
+                NF_ScrollBg(0,2,0,120 - frame);
+            }
 
             NF_SpriteOamSet(0);
             NF_SpriteOamSet(1);
@@ -462,7 +563,7 @@ int main(int argc, char **argv)
             swiWaitForVBlank();
 
             consoleClear();
-            printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n%d", player.x, player.y, player.vx, player.vy,camera.y,loose,nb_p);
+            printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n%d", player.x, player.y, player.vx, player.vy,camera.y,loose,HighScore);
 
             // Update OAM
             oamUpdate(&oamMain);
