@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 
+#define TAILLE_SCORE 5
 
 #define GRAVITE 0.2
 #define SAUT_VELOCITE -5
@@ -88,20 +89,75 @@ void initPlatformes()
 }
 
 
+
+void initScoreText()
+{
+
+    int espacement =  13;
+    //load font
+    NF_LoadSpriteGfx("sprite/font", 2, 16, 16);
+    NF_LoadSpritePal("sprite/font", 2);
+
+    NF_VramSpriteGfx(0, 2, 2, false); // Use sprite index 2 on screen 0
+    NF_VramSpritePal(0, 2, 2);
+
+    for(int i = NB_PLATEFORMES; i < NB_PLATEFORMES+TAILLE_SCORE; i++)
+    {
+        NF_CreateSprite(0, i+1, 2, 2, (i-NB_PLATEFORMES )*espacement, 0);
+        NF_SpriteFrame(0, i+1, 0);
+        NF_ShowSprite(0, i+1,i == NB_PLATEFORMES ? true : false);
+    }
+}
+
+void updateScoreText(int score)
+{
+    int tmp = score;
+    int num_digits = 0;
+    
+    if (tmp == 0) {
+        num_digits = 1;
+    } else {
+        while (tmp > 0) {
+            num_digits++;
+            tmp /= 10;
+        }
+    }
+    
+    // for (int i = 0; i < TAILLE_SCORE; i++) {
+    //     NF_ShowSprite(0, NB_PLATEFORMES + i + 1, false);
+    // }
+    
+    tmp = score;
+    for (int i = 0 ; i < num_digits ; i++) {
+        int digit = tmp % 10;
+        tmp /= 10;
+        
+        int sprite_id = NB_PLATEFORMES + (num_digits - 1 - i) + 1;
+        NF_SpriteFrame(0, sprite_id, digit);
+        NF_ShowSprite(0, sprite_id, true);
+    }
+    
+}
+
+
 void updateCamera(Camera *camera, Joueur *player,bool loose)
 {
     float milieu = 35;
 
     if(player->y < milieu &&  camera->y > player->y - milieu) {
         camera->y = player->y - milieu;
+        updateScoreText((int)((-camera->y)/10));
     } 
 
     if(loose)
     {
-        camera->y = player->y - milieu;
+        float marge = 90;
+        float vx = VITESSE_MAX + 1;
+        camera->y = camera->y + vx  >= player->y - marge ? player->y - marge : camera->y + vx;
     }
     
 }
+
 
 void newPosPlateforme(int i)
 {
@@ -256,6 +312,19 @@ void updatePlayer( Joueur *player)
     //     player->vy *= -1;
     // }
 
+    if(player->x < 0)
+    {
+        player->x = 0;
+        player->vx = 0;
+        //player->vx = -player->vx/2;
+    }
+    else if(player->x > 255 - PLAYER_SPRITE_WIDTH)
+    {
+        player->x = 255 - PLAYER_SPRITE_WIDTH;
+        player->vx = 0;
+        //player->vx = -player->vx/2;
+    }
+
     for( int i = 0; i < NB_PLATEFORMES; i++)
     {
 
@@ -331,10 +400,13 @@ void init()
     NF_VramSpriteGfx(0, 0, 0, true); // Use sprite index 1 on screen 0
     NF_VramSpritePal(0, 0, 0);
 
-
+    
+ 
+ 
     initPlatformes();
 
-}
+    initScoreText();
+} 
 
 
 
@@ -362,36 +434,91 @@ int main(int argc, char **argv)
    // NF_EnableSpriteRotScale(0,0,0,true);
 
   //  NF_SpriteRotScale(0,0,0,256*SCALE_PERSO,256*SCALE_PERSO);
+
+   
     
-    bool loose = false;
+    
     while (1)
     {
         
+        
+        bool loose = false;
+        // PARTIE DE JEU
+        while(1)
+        {
+            updateCamera(&camera, &player,loose);
+            manageInput(&player);
 
-        updateCamera(&camera, &player,loose);
+            updatePlayer(&player);
+            NF_MoveSprite(0, 0, (int)player.x, (int)player.y - camera.y);
+            updatePlatformes(&camera,&player);
+
+            if(player.y > camera.y+140){loose = true; NF_SpriteFrame(0, 0, 1);}
+
+            NF_SpriteOamSet(0);
+            NF_SpriteOamSet(1);
+
+            // Wait for the screen refresh
+            swiWaitForVBlank();
+
+            consoleClear();
+            printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n%d", player.x, player.y, player.vx, player.vy,camera.y,loose,nb_p);
+
+            // Update OAM
+            oamUpdate(&oamMain);
+            oamUpdate(&oamSub);
+        }
+
+        bool fin_animation = false;
+        while(fin_animation)
+        {
 
 
-        manageInput(&player);
-
-        updatePlayer(&player);
-        NF_MoveSprite(0, 0, (int)player.x, (int)player.y - camera.y);
-        updatePlatformes(&camera,&player);
-
-        if(player.y > camera.y+140){loose = true;}
 
 
-        NF_SpriteOamSet(0);
-        NF_SpriteOamSet(1);
 
-        // Wait for the screen refresh
-        swiWaitForVBlank();
+            
+            NF_SpriteOamSet(0);
+            NF_SpriteOamSet(1);
 
-        consoleClear();
-        printf("x: %f,\ny:%f,\nvx:%f,\nvy:%f\ncam y:%f\nloose :%d\n%d", player.x, player.y, player.vx, player.vy,camera.y,loose,nb_p);
+            // Wait for the screen refresh
+            swiWaitForVBlank();
 
-        // Update OAM
-        oamUpdate(&oamMain);
-        oamUpdate(&oamSub);
+            consoleClear();
+
+            // Update OAM
+            oamUpdate(&oamMain);
+            oamUpdate(&oamSub);
+        }
+
+        bool restart = false;
+        while(!restart)
+        {
+            consoleClear();
+            printf("Game Over\n\n");
+            printf("Press A to restart\n");
+            printf("Press B to exit\n");
+
+            scanKeys();
+            uint16_t keys = keysHeld();
+
+            if (keys & KEY_A) {
+                restart = true;
+                player.x = 152;
+                player.y = 80;
+                player.vx = 0;
+                player.vy = SAUT_VELOCITE;
+                camera.y = -20;
+
+                for (int i = 0; i < NB_PLATEFORMES; i++) {
+                    platformes[i].visible = false;
+                    newPosPlateforme(i);
+                }
+            } else if (keys & KEY_B) {
+                restart = true;
+            }
+        }
+
     }
 
     // If this is reached, the program will return to the loader if the loader

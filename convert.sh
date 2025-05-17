@@ -10,7 +10,7 @@ GRIT=$BLOCKSDS/tools/grit/grit
 
 $GRIT nahel.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 $GRIT plateforme.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
-
+$GRIT font.png -ftB -fh! -gTFF00FF -gt -gB8 -m!
 
 mv *.pal *.img ../nitrofiles/sprite
 
