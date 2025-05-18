@@ -11,8 +11,8 @@ ARM_NONE_EABI_PATH	?= $(WONDERFUL_TOOLCHAIN)/toolchain/gcc-arm-none-eabi/bin/
 # User config
 # ===========
 
-NAME		:= $(shell basename $(CURDIR))
-GAME_TITLE	:= $(shell basename $(CURDIR)).nds
+NAME		:= plateformer
+GAME_TITLE	:= plateformer.nds
 GAME_SUBTITLE	:= NightFox’s lib example
 GAME_AUTHOR	:= github.com/knightfox75/nds_nflib
 GAME_ICON	:= $(BLOCKSDS)/sys/icon.bmp
