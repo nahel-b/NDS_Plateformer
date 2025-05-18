@@ -128,6 +128,24 @@ void initScoreText()
    // NF_SpriteRotScale(0,0,0,350,400);
 }
 
+void initHightScoreText()
+{
+
+    int espacement =  13;
+    
+    // font deja load
+
+    for(int i = NB_PLATEFORMES + TAILLE_SCORE; i < NB_PLATEFORMES+(2*TAILLE_SCORE); i++)
+    {
+        NF_CreateSprite(0, i+1, 2, 2,130 + (i-NB_PLATEFORMES - TAILLE_SCORE )*espacement, 63);
+        NF_SpriteFrame(0, i+1, 0);
+        NF_ShowSprite(0, i+1,false);
+        NF_SpriteLayer(0,i+1,1);
+       // NF_EnableSpriteRotScale(0,i+1,0,true);
+    }
+
+}
+
 void hideScoreText()
 {
     
@@ -144,12 +162,12 @@ void placeScoreTextMilieu()
     {
 
         NF_MoveSprite(0, i+1, 130 + (i-NB_PLATEFORMES )*espacement, 34);
-        //NF_ShowSprite(0,i+1,true);
+        NF_ShowSprite(0,i+1,false);
     } 
 }
 
 
-void updateScoreText(int score)
+void updateScoreText(int score,int firstSpriteId,int taille)
 {
     int tmp = score;
     int num_digits = 0;
@@ -172,7 +190,11 @@ void updateScoreText(int score)
         int digit = tmp % 10;
         tmp /= 10;
         
-        int sprite_id = NB_PLATEFORMES + (num_digits - 1 - i) + 1;
+        int sprite_id = firstSpriteId + (num_digits - 1 - i) + 1;
+        if(sprite_id >= firstSpriteId + taille)
+        {
+            return;
+        }
         NF_SpriteFrame(0, sprite_id, digit);
         NF_ShowSprite(0, sprite_id, true);
     }
@@ -412,6 +434,7 @@ void init()
    // NF_Set2D(1, 0);
    
     // Initialize FAT filesystem for save files
+
     fatInitDefault();
     
     // Initialize tiled backgrounds system
@@ -419,7 +442,7 @@ void init()
     NF_InitTiledBgSys(0);       // Top screen
    // NF_InitTiledBgSys(1);       // Bottom screen
 
-    // Initialize sprite system
+    // Initialize sprite system 
     NF_InitSpriteBuffers();     // Initialize storage buffers
     NF_InitSpriteSys(0);        // Top screen
    // NF_InitSpriteSys(1);        // Bottom screen
@@ -516,7 +539,10 @@ int main(int argc, char **argv)
         {
             updateCamera(&camera, &player,loose,&score);
 
-            updateScoreText(score);
+            if(!loose)
+            {
+                updateScoreText(score,NB_PLATEFORMES,TAILLE_SCORE);
+            }
             manageInput(&player);
 
             updatePlayer(&player);
@@ -554,6 +580,16 @@ int main(int argc, char **argv)
                 //120 - 30
                 int frame = frameFinAnime > 90 ? 90 : frameFinAnime;
                 NF_ScrollBg(0,2,0,120 - frame);
+            }
+            if(frameFinAnime >= 90)
+            {
+
+                initHightScoreText();
+                int affScore = frameFinAnime - 90;
+                updateScoreText(affScore >= score ? score : affScore,NB_PLATEFORMES,TAILLE_SCORE);
+                int affHighScore = frameFinAnime - 90;
+                updateScoreText(affHighScore >= HighScore ? HighScore : affHighScore,NB_PLATEFORMES + TAILLE_SCORE,TAILLE_SCORE);
+               
             }
 
             NF_SpriteOamSet(0);
