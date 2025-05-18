@@ -21,6 +21,8 @@ void initScoreText()
     }
 }
 
+
+
 void initHightScoreText()
 {
     int espacement = 13;
@@ -32,6 +34,21 @@ void initHightScoreText()
         NF_ShowSprite(0, i+1, false);
         NF_SpriteLayer(0, i+1, 1);
     }
+}
+
+void restartText()
+{
+    
+    int espacement = 13;
+    for(int i = NB_PLATEFORMES; i < NB_PLATEFORMES+TAILLE_SCORE; i++)
+    {
+        NF_ShowSprite(0, i+1, false);
+        NF_MoveSprite(0, i+1,(i-NB_PLATEFORMES)*espacement, 0);
+    } 
+    for(int i = NB_PLATEFORMES + TAILLE_SCORE; i < NB_PLATEFORMES+(2*TAILLE_SCORE); i++)
+    {
+        NF_ShowSprite(0, i+1, false);
+    } 
 }
 
 void hideScoreText()

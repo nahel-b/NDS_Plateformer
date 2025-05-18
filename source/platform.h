@@ -10,5 +10,6 @@ extern int nb_p;
 void initPlatformes();
 void newPosPlateforme(int i);
 void updatePlatformes(Camera *camera, Joueur *player);
+void restartPlatformes(float playerX);
 
 #endif // PLATFORM_H

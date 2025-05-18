@@ -13,9 +13,9 @@ void manageInput(Joueur *player)
     scanKeys();
     uint16_t keys = keysHeld();
 
-    if (keys & KEY_UP) {
-        sauter(player, SAUT_VELOCITE);
-    }
+    // if (keys & KEY_UP) {
+    //     sauter(player, SAUT_VELOCITE);
+    // }
 
     if (keys & KEY_LEFT) {
         player->vx = player->vx-COTE_VELOCITE < - MAX_COTE_VELOCITE ? - MAX_COTE_VELOCITE : player->vx-COTE_VELOCITE;

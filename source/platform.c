@@ -6,6 +6,32 @@
 
 int nb_p = 0;
 
+void restartPlatformes(float playerX)
+{
+    for (int i = 0; i < NB_PLATEFORMES; i++) {
+        platformes[i].visible = false;
+        platformes[i].mouvante = false;
+        platformes[i].trampoline = false;
+        platformes[i].vx = 0;
+        if(i== 0)
+        {
+            platformes[i].x = playerX ;
+            platformes[i].y = 160;
+            platformes[i].visible = true;
+        }
+        else
+        {
+            platformes[i].x = 100;
+            platformes[i].y = 200;
+        }
+    }
+
+    for(int i = 0; i < NB_PLATEFORMES; i++) {
+        newPosPlateforme(i+1);
+    }
+    
+}
+
 Platforme platformes[NB_PLATEFORMES] = {
     {50, 100, true, false, 0, false},
     {140, 160, true, false, 0, false},
